@@ -5,7 +5,7 @@ See the readme.md file for comprehensive details on how this is strung together
 
 You'll need the ExchangeOnlineManagement, SharePoint, MSonline and AzureADPreview modules for this script to run, if they are not isntalled they will be automatically installed for you.
 
-.NOTES 
+.NOTES
     Name:           TenantReporter
     Version:        1.0
     Author:         Mikael Lognseth @ Innit Cloud Solutions AS
@@ -26,18 +26,18 @@ Function Get-AzureMFAStatus {
             ValueFromPipelineByPropertyName=$true
             )]
 
-        [string[]]   $UserPrincipalName,         
+        [string[]]   $UserPrincipalName,
         [int]        $MaxResults = 4000,
         [bool]       $isLicensed = $true,
         [switch]     $SkipAdminCheck
     )
- 
+
     BEGIN {
         if ($SkipAdminCheck.IsPresent) {
             $AdminUsers = Get-MsolRole -ErrorAction Stop | foreach {Get-MsolRoleMember -RoleObjectId $_.ObjectID} | Where-Object {$_.EmailAddress -ne $null} | Select EmailAddress -Unique | Sort-Object EmailAddress
         }
     }
- 
+
     PROCESS {
         if ($UserPrincipalName) {
             foreach ($User in $UserPrincipalName) {
@@ -45,13 +45,13 @@ Function Get-AzureMFAStatus {
                     Get-MsolUser -UserPrincipalName $User -ErrorAction Stop | select DisplayName, UserPrincipalName, `
                         @{Name = 'isAdmin'; Expression = {if ($SkipAdminCheck) {Write-Output "-"} else {if ($AdminUsers -match $_.UserPrincipalName) {Write-Output $true} else {Write-Output $false}}}}, `
                         @{Name = 'MFAEnabled'; Expression={if ($_.StrongAuthenticationMethods) {Write-Output $true} else {Write-Output $false}}}
-                              
+
                 } catch {
                     $Object = [pscustomobject]@{
                         DisplayName       = '_NotSynced'
                         UserPrincipalName = $User
                         isAdmin           = '-'
-                        MFAEnabled        = '-' 
+                        MFAEnabled        = '-'
                     }
                     Write-Output $Object
                 }
@@ -60,7 +60,7 @@ Function Get-AzureMFAStatus {
             $AllUsers = Get-MsolUser -MaxResults $MaxResults | Where-Object {$_.IsLicensed -eq $isLicensed} | select DisplayName, UserPrincipalName, `
                 @{Name = 'isAdmin'; Expression = {if ($SkipAdminCheck) {Write-Output "-"} else {if ($AdminUsers -match $_.UserPrincipalName) {Write-Output $true} else {Write-Output $false}}}}, `
                 @{Name = 'MFAEnabled'; Expression={if ($_.StrongAuthenticationMethods) {Write-Output $true} else {Write-Output $false}}}
- 
+
             Write-Output $AllUsers | Sort-Object isAdmin, MFAEnabled -Descending
         }
     }
@@ -101,11 +101,32 @@ $LogPath = Join-Path $FolderPath + "$OrganizationName.txt"
 
 Start-Transcript -Path $LogPath -Force
 
-Connect-ExchangeOnline
-Connect-AzureAD
-Connect-MsolService
-Connect-SPOService -Url $SPOurl
+#Authentication Flow.
 
+$title = ""
+$msg     = 'Does your account require MFA to sign in?'
+$options = '&Yes', '&No'
+$default = 1  # 0=Yes, 1=No
+
+do {
+    $response = $Host.UI.PromptForChoice($title, $msg, $options, $default)
+    if ($response -eq 0) {
+        # prompt for sign in using MFA
+        Connect-AzureAD
+        Connect-MsolService
+        Connect-SPOService -Url $SPOurl
+        Connect-ExchangeOnline
+    }
+    if ($response -eq 1) {
+        #Prompt for sign in using basic / traditional auth.
+        Write-Host "Please enter valid Admin credentials" -f Magenta
+        $Creds = Get-Credential
+        Connect-ExchangeOnline -Credential $Creds
+        Connect-MsolService -Credential $Creds
+        Connect-SPOService -Url $SPOurl -Credential $Creds
+        Connect-AzureAD -Credential $Creds
+    }
+} until ($response -eq 1 -or $response -eq 0)
 
 
 
