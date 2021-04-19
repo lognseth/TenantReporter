@@ -156,11 +156,14 @@ else {
     }
 
     Write-Host("$AuthPolicyUsers users do not have an authentication policy") -ForegroundColor DarkYellow
-    Write-Host("Getting OAuthStatus")
+
 
     $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
     Write-Host("Total mailbox size in your organization is $MbxSize") -f DarkCyan
 
+
+
+    Write-Host("Getting OAuthStatus")
     $OAuthStatus = Get-OrganizationConfig | Select-Object OAuth2ClientProfileEnabled
 
     if ($OAuthStatus -match $false) {
