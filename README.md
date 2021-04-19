@@ -7,17 +7,15 @@ The goal is to parse this into a HTML file for an easy overview of what an envir
 ## Data collected
 Below is an overview of what kind of data we'll collect in this script. 
 
-### Exchange
+### Exchange (WIP)
 - Mailbox (user) data
   - Number of mailboxes
   - Individual and collective size of all mailboxes
  
 - Distribution lists
 - Shared Mailboxes
-- Aliases
-- Forwarding
-
-### Azure AD
+- 
+### Azure AD (WIP)
 - Office 365 Groups
 - Security Groups
 - Conditional Access policies
@@ -25,14 +23,14 @@ Below is an overview of what kind of data we'll collect in this script.
 - App registrations
 
 
-### SharePoint
+### SharePoint (All done, not visualized yet)
 - Number of sites
 - Data stored on each site
 - Data stored on all sites in Total
 - External sharing
 
-### Teams
-- Number of Teams
+### Teams (Not started)
+ - Number of Teams
 - Number of Teams with guests
 - amount of data stored in Teams.
 
