@@ -145,7 +145,7 @@ else {
     $Users = Get-Mailbox -RecipientTypeDetails UserMailbox
 
     $LicensedUsers = (Get-MsolUser | where {$_.IsLicensed -eq $true}).Count
-    Write-Host("Your organization currently has " + $LicensedUsers + " Licensed users") -ForegroundColor Cyan
+    Write-Host("Your organization currently has " + $LicensedUsers + " Licensed users") -ForegroundColor Blue
     $AuthPolicyUsers = 0
     Write-Host("Getting authentication policies for all users") -ForegroundColor Cyan
     foreach ($user in $users) {
@@ -158,7 +158,8 @@ else {
     Write-Host("$AuthPolicyUsers users do not have an authentication policy") -ForegroundColor DarkYellow
     Write-Host("Getting OAuthStatus")
 
-
+    $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
+    Write-Host("Total mailbox size in your organization is $MbxSize") -f DarkCyan
 
     $OAuthStatus = Get-OrganizationConfig | Select-Object OAuth2ClientProfileEnabled
 
@@ -214,8 +215,35 @@ else {
         }
     }
 
-    Disconnect-AzureAD
-    Disconnect-ExchangeOnline
+    $processmessagecolor = "green"
+    $highlightmessagecolor = "yellow"
+    $sectionmessagecolor = "white"
+
+    $SPTotalSize = 0
+    $ODTotalSize = 0
+
+    $sposites=get-sposite -IncludePersonalSite $false -limit all | Sort-Object StorageUsageCurrent -Descending          ## get all non-ODFB sites
+    Write-host -foregroundcolor $sectionmessagecolor "*** Current SharePoint Site Usage ***`n"
+    foreach ($sposite in $sposites) {                           ## loop through all of these sites
+    $mbsize=$sposite.StorageUsageCurrent                    ## save total size to a variable to be formatted later
+        #write-host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
+        $SPTotalSize += $mbsize
+    }
+    $sposites=get-sposite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/" | Sort-Object StorageUsageCurrent -Descending
+    Write-host -foregroundcolor $sectionmessagecolor "*** Current ODFB Site Usage ***`n"
+    foreach ($sposite in $sposites) {
+        $mbsize=$sposite.StorageUsageCurrent
+        #Write-Host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
+        $ODTotalSize += $mbsize
+    }
+
+
+    Write-Host("Total OneDrive usage: $ODTotalSize MB") -f DarkGreen
+    Write-Host("Total SharePoint usage: $SPTotalSize MB") -f DarkGreen
+
+    Disconnect-AzureAD -Confirm:$false
+    Disconnect-ExchangeOnline -Confirm:$false
+    Disconnect-SPOService
 
     Stop-Transcript
 }
