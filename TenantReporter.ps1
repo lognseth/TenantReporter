@@ -236,7 +236,7 @@ else {
 
     $TotalDataSize = $SPTotalSize + $ODTotalSize + $MbxSize
 
-    Write-Host("Total storage used: $TotalDataSize MB") -f DarkGreen
+    Write-Host("Total storage used: $TotalDataSize MB `n") -f DarkGreen
 
     Disconnect-AzureAD -Confirm:$false
     Disconnect-ExchangeOnline -Confirm:$false
