@@ -3,7 +3,7 @@
 
 See the readme.md file for comprehensive details on how this is strung together
 
-You"ll need the ExchangeOnlineManagement, SharePoint, MSonline and AzureADPreview modules for this script to run, if they are not isntalled they will be automatically installed for you.
+You'll need the ExchangeOnlineManagement, SharePoint, MSonline and AzureAD modules for this script to run, if they are not isntalled they will be automatically installed for you.
 
 .NOTES
     Name:           TenantReporter
