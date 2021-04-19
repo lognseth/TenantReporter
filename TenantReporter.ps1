@@ -157,12 +157,6 @@ else {
 
     Write-Host("$AuthPolicyUsers users do not have an authentication policy") -ForegroundColor DarkYellow
 
-
-    $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
-    Write-Host("Total mailbox size in your organization is $MbxSize") -f DarkCyan
-
-
-
     Write-Host("Getting OAuthStatus")
     $OAuthStatus = Get-OrganizationConfig | Select-Object OAuth2ClientProfileEnabled
 
@@ -218,31 +212,31 @@ else {
         }
     }
 
-    $processmessagecolor = "green"
-    $highlightmessagecolor = "yellow"
-    $sectionmessagecolor = "white"
-
     $SPTotalSize = 0
     $ODTotalSize = 0
 
-    $sposites=get-sposite -IncludePersonalSite $false -limit all | Sort-Object StorageUsageCurrent -Descending          ## get all non-ODFB sites
-    Write-host -foregroundcolor $sectionmessagecolor "*** Current SharePoint Site Usage ***`n"
+    $sposites = get-sposite -IncludePersonalSite $false -limit all | Sort-Object StorageUsageCurrent -Descending          ## get all non-ODFB sites
     foreach ($sposite in $sposites) {                           ## loop through all of these sites
     $mbsize=$sposite.StorageUsageCurrent                    ## save total size to a variable to be formatted later
         #write-host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $SPTotalSize += $mbsize
     }
-    $sposites=get-sposite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/" | Sort-Object StorageUsageCurrent -Descending
-    Write-host -foregroundcolor $sectionmessagecolor "*** Current ODFB Site Usage ***`n"
+    $sposites = get-sposite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/" | Sort-Object StorageUsageCurrent -Descending
     foreach ($sposite in $sposites) {
         $mbsize=$sposite.StorageUsageCurrent
         #Write-Host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $ODTotalSize += $mbsize
     }
 
+    $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
 
-    Write-Host("Total OneDrive usage: $ODTotalSize MB") -f DarkGreen
-    Write-Host("Total SharePoint usage: $SPTotalSize MB") -f DarkGreen
+    Write-Host("Total mailbox size in your organization is $MbxSize") -f Green
+    Write-Host("Total OneDrive usage: $ODTotalSize MB") -f Green
+    Write-Host("Total SharePoint usage: $SPTotalSize MB") -f Green
+
+    $TotalDataSize = $SPTotalSize + $ODTotalSize + $MbxSize
+
+    Write-Host("Total storage used: $TotalDataSize MB") -f DarkGreen
 
     Disconnect-AzureAD -Confirm:$false
     Disconnect-ExchangeOnline -Confirm:$false
