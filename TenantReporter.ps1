@@ -230,13 +230,18 @@ else {
 
     $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
 
-    Write-Host("Total mailbox size in your organization is $MbxSize") -f Green
+    $UserMbx = (Get-mailbox -RecipientTypeDetails UserMailbox).Count
+    $SharedMbx = (Get-Mailbox -RecipientTypeDetails SharedMailbox).Count
+    $DistLists = (Get-DistributionGroup).Count
+
+    Write-Host("There are $SharedMbx shared mailboxes in your org and $DistLists distribution groups") -f Green
+    Write-Host("There are $UserMbx user mailboxes in your org with a total of $MbxSize MB worth of data") -f Green
     Write-Host("Total OneDrive usage: $ODTotalSize MB") -f Green
     Write-Host("Total SharePoint usage: $SPTotalSize MB") -f Green
 
     $TotalDataSize = $SPTotalSize + $ODTotalSize + $MbxSize
 
-    Write-Host("Total storage used: $TotalDataSize MB `n") -f DarkGreen
+    Write-Host("Total storage used: $TotalDataSize MB `n") -f Blue
 
     Disconnect-AzureAD -Confirm:$false
     Disconnect-ExchangeOnline -Confirm:$false
