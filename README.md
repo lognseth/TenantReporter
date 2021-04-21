@@ -7,10 +7,10 @@ The goal is to parse this into a HTML file for an easy overview of what an envir
 ## Data collected
 Below is an overview of what kind of data we'll collect in this script. 
 
-### Exchange (WIP)
+### Exchange
 - Mailbox (user) data
   - Number of mailboxes
-  - Individual and collective size of all mailboxes
+  - Collective size of all mailboxes
  
 - Distribution lists
 - Shared Mailboxes

@@ -250,7 +250,9 @@ else {
     $ODTotalSize = $ODTotalSize / 1024
     $SPTotalSize = $SPTotalSize / 1024
     $MbxSize = $MbxSize / 1024
-
+    $AadApps = (Get-AzureADApplication).Count
+    
+    Write-Host("There are $AadApps App registrations in your tenant")
     Write-Host("There are $SharedMbx shared mailboxes in your org and $DistLists distribution groups") -f Green
     Write-Host("There are $UserMbx user mailboxes in your org with a total of $MbxSize GB worth of data") -f Green
     Write-Host("Total OneDrive usage: $ODTotalSize GB") -f Green
