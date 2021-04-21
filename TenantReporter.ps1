@@ -106,9 +106,10 @@ else {
     $FolderPath = "C:\TenantReporter\"
     $LogPath = $FolderPath + "log_" + $CurrentTime + ".txt"
 
-    if (!($FolderPath)) {
+    if (-not (Test-Path $FolderPath)) {
         New-Item -Path "C:\" -Name "TenantReporter" -ItemType Directory
     }
+    
 
     Start-Transcript -Path $LogPath -Force
 
@@ -241,7 +242,7 @@ else {
     }
     $OneDriveHash
     $SharePointHash
-    $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
+    $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum 
 
     $UserMbx = (Get-mailbox -RecipientTypeDetails UserMailbox).Count
     $SharedMbx = (Get-Mailbox -RecipientTypeDetails SharedMailbox).Count
@@ -251,7 +252,7 @@ else {
     $SPTotalSize = $SPTotalSize / 1024
     $MbxSize = $MbxSize / 1024
     $AadApps = (Get-AzureADApplication).Count
-    
+
     Write-Host("There are $AadApps App registrations in your tenant")
     Write-Host("There are $SharedMbx shared mailboxes in your org and $DistLists distribution groups") -f Green
     Write-Host("There are $UserMbx user mailboxes in your org with a total of $MbxSize GB worth of data") -f Green
@@ -264,11 +265,10 @@ else {
 
     $ReportsPath = "C:\TenantReporter\reports\"
 
-    if (!($ReportsPath)) {
+    if (-not (Test-Path $ReportsPath)) {
         New-Item -Path "C:\TenantReporter" -Name "reports" -ItemType Directory
     }
-
-
+    
     $CurrentTime = Get-Date -UFormat %R
     $CurrentTime = $CurrentTime.ToString()
     $Prefix = "C:\TenantReporter\reports\" + $OrganizationName
@@ -294,7 +294,7 @@ else {
             Get-Mailbox -Resultsize Unlimited -RecipientTypeDetails SharedMailbox | Select-Object DisplayName,PrimarySmtpAddress,UserPrincipalName | Export-Csv -Path $MailboxReports -Encoding UTF8 -NoTypeInformation -Append
             Get-DistributionGroup | Select-Object DisplayName,PrimarySmtpAddress,GroupType,RecipientTypeDetails | Export-Csv -Path $GroupReports -Encoding UTF8 -NoTypeInformation
             Get-UnifiedGroup | Select-Object DisplayName,PrimarySmtpAddress,GroupType,RecipientTypeDetails | Export-Csv -Path $GroupReports -Encoding UTF8 -NoTypeInformation -Append
-            Get-AzureADUser -All $true | Where-Object {$_.UserType -eq 'Guest'} | Export-Csv -Path $GuestReports -Encoding UTF8 -NoTypeInformation
+            Get-AzureADUser -All $true | Where-Object {$_.UserType -eq 'Guest'} | Select-Object DisplayName,Mail | Export-Csv -Path $GuestReports -Encoding UTF8 -NoTypeInformation
 
             $SPreport = @()
             $SharePointHash.GetEnumerator() | ForEach-Object {
