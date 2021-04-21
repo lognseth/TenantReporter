@@ -93,22 +93,20 @@ else {
             Write-Host($Module + " is not installed") -ForegroundColor Yellow
             Write-Host("Installing " + $Module) -ForegroundColor Green
     		Install-Module -Name $Module -Confirm:$false -Force -AllowClobber
-    		Import-Module -Name $Module -AllowClobber
+    		Import-Module -Name $Module
     	}
     	else {
     		Write-Host($Module + " is already installed.") -ForegroundColor Green
     	}
     }
 
-    $CurrentTime = Get-Date -UFormat %T
+    $CurrentTime = Get-Date -UFormat %R
     $CurrentTime = $CurrentTime.ToString()
-    $FolderPath = "C:\Innit\"
-    $OrganizationName = Read-Host("Organization name (The bit before .onmicrosoft)")
-    $SPOurl = "https://" + $OrganizationName + "-admin.sharepoint.com"
-    $LogPath = $FolderPath + $OrganizationName + "_" + $CurrentTime + ".txt"
+    $FolderPath = "C:\TenantReporter\"
+    $LogPath = $FolderPath + "log_" + $CurrentTime + ".txt"
 
     if (!($FolderPath)) {
-        New-Item -Path "C:\" -Name "Innit" -ItemType Directory
+        New-Item -Path "C:\" -Name "TenantReporter" -ItemType Directory
     }
 
     Start-Transcript -Path $LogPath -Force
@@ -125,6 +123,8 @@ else {
         if ($response -eq 0) {
             #Prompt for sign in using MFA
             Write-Host("Since you are using MFA; you will be prompted to sign in to each service individually") -f Magenta
+            $OrganizationName = Read-Host("Organization name (The bit before .onmicrosoft.com)")
+            $SPOurl = "https://" + $OrganizationName + "-admin.sharepoint.com"
             Connect-AzureAD
             Connect-MsolService
             Connect-SPOService -Url $SPOurl
@@ -135,8 +135,13 @@ else {
             Write-Host "Please enter valid Admin credentials" -f Magenta
             $Creds = Get-Credential
             Connect-ExchangeOnline -Credential $Creds
+            $DomainPrefix = Get-AcceptedDomain | Where-Object {$_.DomainName -match ".onmicrosoft.com"} | select -Last 1
+            $DomainPrefix = $DomainPrefix.DomainName
+            $OrganizationName = $DomainPrefix -replace ".{16}$"
+            start-sleep -s 5
+            $SPOurl = "https://" + $OrganizationName + "-admin.sharepoint.com"
             Connect-MsolService -Credential $Creds
-            Connect-SPOService -Url $SPOurl -Credential $Creds
+            Connect-SPOService -Url $SPOurl -Credential $Creds  
             Connect-AzureAD -Credential $Creds
         }
     } until ($response -eq 1 -or $response -eq 0)
@@ -217,13 +222,14 @@ else {
 
     $sposites = get-sposite -IncludePersonalSite $false -limit all | Sort-Object StorageUsageCurrent -Descending          ## get all non-ODFB sites
     foreach ($sposite in $sposites) {                           ## loop through all of these sites
-    $mbsize=$sposite.StorageUsageCurrent                    ## save total size to a variable to be formatted later
+    $mbsize = $sposite.StorageUsageCurrent                    ## save total size to a variable to be formatted later
         #write-host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $SPTotalSize += $mbsize
     }
+    
     $sposites = get-sposite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/" | Sort-Object StorageUsageCurrent -Descending
     foreach ($sposite in $sposites) {
-        $mbsize=$sposite.StorageUsageCurrent
+        $mbsize = $sposite.StorageUsageCurrent
         #Write-Host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $ODTotalSize += $mbsize
     }
@@ -234,14 +240,58 @@ else {
     $SharedMbx = (Get-Mailbox -RecipientTypeDetails SharedMailbox).Count
     $DistLists = (Get-DistributionGroup).Count
 
+    $ODTotalSize = $ODTotalSize / 1024
+    $SPTotalSize = $SPTotalSize / 1024
+    $MbxSize = $MbxSize / 1024
+
     Write-Host("There are $SharedMbx shared mailboxes in your org and $DistLists distribution groups") -f Green
-    Write-Host("There are $UserMbx user mailboxes in your org with a total of $MbxSize MB worth of data") -f Green
-    Write-Host("Total OneDrive usage: $ODTotalSize MB") -f Green
-    Write-Host("Total SharePoint usage: $SPTotalSize MB") -f Green
+    Write-Host("There are $UserMbx user mailboxes in your org with a total of $MbxSize GB worth of data") -f Green
+    Write-Host("Total OneDrive usage: $ODTotalSize GB") -f Green
+    Write-Host("Total SharePoint usage: $SPTotalSize GB") -f Green
 
     $TotalDataSize = $SPTotalSize + $ODTotalSize + $MbxSize
 
-    Write-Host("Total storage used: $TotalDataSize MB `n") -f Blue
+    Write-Host("Total storage used: $TotalDataSize GB `n") -f Blue
+
+    $ReportsPath = "C:\TenantReporter\reports\"
+
+    if (!($ReportsPath)) {
+        New-Item -Path "C:\TenantReporter" -Name "reports" -ItemType Directory
+    }
+
+
+    $CurrentTime = Get-Date -UFormat %R
+    $CurrentTime = $CurrentTime.ToString()
+    $Prefix = "C:\TenantReporter\reports\" + $OrganizationName
+
+    $MailboxReports = $Prefix + "_mailboxes.csv" 
+    $GuestReports = $Prefix + "_guests.csv" 
+    $SharePointReports = $Prefix + "_sharepoint.csv" 
+    $OneDriveReports = $Prefix + "_onedrive.csv" 
+    $GroupReports = $Prefix + "_groups.csv" 
+
+    $title = ""
+    $msg     = "Do you wish to create and export usage reports to a csv file?"
+    $options = "&Yes", "&No"
+    $default = 0  # 0=Yes, 1=No
+
+    do {
+        $response = $Host.UI.PromptForChoice($title, $msg, $options, $default)
+        if ($response -eq 0) {
+            #Prompt for sign in using MFA
+            Write-Host("Generating reports... `nYou will find the reports in C:\TenantReporter\reports\") -f Magenta
+            
+            Get-Mailbox -Resultsize Unlimited -RecipientTypeDetails UserMailbox | Select-Object DisplayName,PrimarySmtpAddress,UserPrincipalName | Export-Csv -Path $MailboxReports -Encoding UTF8 -NoTypeInformation
+            Get-Mailbox -Resultsize Unlimited -RecipientTypeDetails SharedMailbox | Select-Object DisplayName,PrimarySmtpAddress,UserPrincipalName | Export-Csv -Path $MailboxReports -Encoding UTF8 -NoTypeInformation -Append
+            Get-DistributionGroup | Select-Object DisplayName,PrimarySmtpAddress,GroupType,RecipientTypeDetails | Export-Csv -Path $GroupReports -Encoding UTF8 -NoTypeInformation
+            Get-UnifiedGroup | Select-Object DisplayName,PrimarySmtpAddress,GroupType,RecipientTypeDetails | Export-Csv -Path $GroupReports -Encoding UTF8 -NoTypeInformation -Append
+            Get-AzureADUser -All $true | Where-Object {$_.UserType -eq 'Guest'} | Export-Csv -Path $GuestReports -Encoding UTF8 -NoTypeInformation
+
+        }
+        if ($response -eq 1) {
+            Write-Host("No report will be generated, exiting script.")
+        }
+    } until ($response -eq 1 -or $response -eq 0)
 
     Disconnect-AzureAD -Confirm:$false
     Disconnect-ExchangeOnline -Confirm:$false
