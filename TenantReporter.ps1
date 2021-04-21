@@ -22,8 +22,9 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 else {
     Write-Host "Script is running as administrator - executing code..." -ForegroundColor DarkGreen
 
-    #$ErrorActionPreference = "SilentlyContinue"
-
+    $ErrorActionPreference = "SilentlyContinue"
+    $VerbosePreference = "SilentlyContinue"
+    
     Function Get-AzureMFAStatus {
 
     [CmdletBinding()]
@@ -220,20 +221,26 @@ else {
     $SPTotalSize = 0
     $ODTotalSize = 0
 
+    $OneDriveHash = @{}
+    $SharePointHash = @{}
+
     $sposites = get-sposite -IncludePersonalSite $false -limit all | Sort-Object StorageUsageCurrent -Descending          ## get all non-ODFB sites
     foreach ($sposite in $sposites) {                           ## loop through all of these sites
     $mbsize = $sposite.StorageUsageCurrent                    ## save total size to a variable to be formatted later
+        $SharePointHash.Add($sposite.Url, $mbsize.tostring('N0'))
         #write-host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $SPTotalSize += $mbsize
     }
-    
+
     $sposites = get-sposite -IncludePersonalSite $true -Limit all -Filter "Url -like '-my.sharepoint.com/personal/" | Sort-Object StorageUsageCurrent -Descending
     foreach ($sposite in $sposites) {
         $mbsize = $sposite.StorageUsageCurrent
+        $OneDriveHash.Add($sposite.Owner, $mbsize.tostring('N0'))
         #Write-Host -foregroundcolor $highlightmessagecolor $sposite.title,"=",$mbsize.tostring('N0'),"MB"
         $ODTotalSize += $mbsize
     }
-
+    $OneDriveHash
+    $SharePointHash
     $MbxSize = ((get-exomailbox -ResultSize Unlimited | get-exomailboxstatistics).TotalItemSize.Value.ToMB() | measure-object -sum).sum
 
     $UserMbx = (Get-mailbox -RecipientTypeDetails UserMailbox).Count
@@ -287,7 +294,25 @@ else {
             Get-UnifiedGroup | Select-Object DisplayName,PrimarySmtpAddress,GroupType,RecipientTypeDetails | Export-Csv -Path $GroupReports -Encoding UTF8 -NoTypeInformation -Append
             Get-AzureADUser -All $true | Where-Object {$_.UserType -eq 'Guest'} | Export-Csv -Path $GuestReports -Encoding UTF8 -NoTypeInformation
 
+            $SPreport = @()
+            $SharePointHash.GetEnumerator() | ForEach-Object {
+        	    $row = "" | Select "Site URL","Storage Used in MB"
+        	    $row."Site URL" = $_.Key
+        	    $row."Storage Used in MB" = $_.Value
+        	    $SPreport += $row
+            }
+            $SPreport | Export-Csv -Path $SharePointReports -NoTypeInformation -Encoding UTF8
+            
+            $ODreport = @()
+            $OneDriveHash.GetEnumerator() | ForEach-Object {
+        	    $row = "" | Select "Owner","Storage Used in MB"
+        	    $row."Owner" = $_.Key
+        	    $row."Storage Used in MB" = $_.Value
+        	    $ODreport += $row
+            }
+            $ODreport | Export-Csv -Path $OneDriveReports -NoTypeInformation -Encoding UTF8
         }
+        
         if ($response -eq 1) {
             Write-Host("No report will be generated, exiting script.")
         }
