@@ -137,12 +137,12 @@ else {
             Write-Host "Please enter valid Admin credentials" -f Magenta
             $Creds = Get-Credential
             Connect-ExchangeOnline -Credential $Creds
-            $DomainPrefix = Get-AcceptedDomain | Where-Object {$_.DomainName -match ".onmicrosoft.com"} | select -Last 1
-            $DomainPrefix = $DomainPrefix.DomainName
+            Connect-MsolService -Credential $Creds
+            $DomainPrefix = Get-MsolDomain | where-object -Property IsInitial -eq $true
+            $DomainPrefix = $DomainPrefix.Name
             $OrganizationName = $DomainPrefix -replace ".{16}$"
             start-sleep -s 5
             $SPOurl = "https://" + $OrganizationName + "-admin.sharepoint.com"
-            Connect-MsolService -Credential $Creds
             Connect-SPOService -Url $SPOurl -Credential $Creds  
             Connect-AzureAD -Credential $Creds
         }
