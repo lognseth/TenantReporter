@@ -1,6 +1,6 @@
 # TenantReporter
 ## Summary
-The TenantReporter is an internal [Arribatec](https://arribatec.com) tool used to gather as much information as possible about an Azure environment prior to a technical migration. 
+The TenantReporter is a tool used to gather as much information as possible about an Azure environment prior to a technical migration (either a take-over, or just to gather insights). 
 
 The goal is to parse this into a HTML file for an easy overview of what an environment contains, the current version only outputs to the console. 
 
